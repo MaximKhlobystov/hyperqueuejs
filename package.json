@@ -4,6 +4,7 @@
   "main": "app.js",
   "author": "Maxim Khlobystov",
   "dependencies": {
+    "body-parser": "^1.14.2",
     "express": "~4.13.4"
   }
 }

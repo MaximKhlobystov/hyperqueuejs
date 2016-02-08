@@ -1,6 +1,7 @@
-var express = require('express');
-var crypto = require('crypto');
-var bodyParser = require('body-parser');
+var express = require("express");
+var crypto = require("crypto");
+var bodyParser = require("body-parser");
+var httpStatus = require("http-status-codes");
 
 var app = express();
 
@@ -101,20 +102,24 @@ app.post('/:topic', function (req, res) {
       store.addTopic(req.params.topic);
     }
     var addedEvent = store.pushEventByTopicIndex(store.getTopicByName(req.params.topic).index, req.body);
+    res.status(httpStatus.CREATED); // code 201 (successfully created)
     res.json(addedEvent);
   }
 });
 
 // handling GET requests (from consumers)
 app.get('/:topic', function (req, res) {
+  console.log("GET");
   res.setHeader("Access-Control-Expose-Headers", "Session-Id");
   if(req.query.session == undefined) { // for the first time
     var sid = store.registerSession();
     res.setHeader("Session-Id", sid);
+    res.status(httpStatus.OK); // code 200 (operation successful)
     res.send();
   } else {
     console.log(req.query.session);
-    //console.log(store.updateSession(req.query.session, "topic1", 0));
+    res.status(httpStatus.OK); // code 200 (operation successful)
+    res.json({"test": "test"});
   }
 });
 

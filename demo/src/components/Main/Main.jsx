@@ -23,16 +23,22 @@ var Main = React.createClass({
   handleGET: function() {
     var req = new XMLHttpRequest();
     req.onreadystatechange = function() {
-      if(req.readyState == 4 && req.status == 200) {
-        var sid = req.getResponseHeader("Session-Id");
-        var xhr = new XMLHttpRequest();
-        xhr.onreadystatechange = function() {
-          if(xhr.readyState == 4 && xhr.status == 200) {
-            console.log("event");
+      if(req.readyState == 4) {
+        if(req.status == 200) {
+          console.log("OK");
+          var sid = req.getResponseHeader("Session-Id");
+          var xhr = new XMLHttpRequest();
+          xhr.onreadystatechange = function() {
+            if(xhr.readyState == 4) {
+              if(xhr.status == 200) {
+                console.log("OK");
+                console.log(xhr.responseText);
+              }
+            }
           }
+          xhr.open("GET", "http://localhost:3000/topic1?session=" + sid, true);
+          xhr.send();
         }
-        xhr.open("GET", "http://localhost:3000/topic1?session=" + sid, true);
-        xhr.send();
       }
     };
     req.open("GET", "http://localhost:3000/topic1", true);
@@ -43,8 +49,10 @@ var Main = React.createClass({
   handlePOST: function() {
     var xhr = new XMLHttpRequest();
     xhr.onreadystatechange = function() {
-      if(xhr.readyState == 4 && xhr.status == 200) {
-        console.log(xhr.responseText);
+      if(xhr.readyState == 4) {
+        if(xhr.status == 201) { // 201 - successfully created
+          console.log(xhr.responseText);
+        }
       }
     };
     xhr.open("POST", "http://localhost:3000/" + this.state.type, true);

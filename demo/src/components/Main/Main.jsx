@@ -33,7 +33,7 @@ var Client = (function(brokerHost, brokerPort) {
         }
       }
     }
-    xhr.open("GET", "http://localhost:3000/" + topic + "?session=" + sid, true);
+    xhr.open("GET", host + ":" + port + "/" + topic + "?session=" + sid, true);
     xhr.send();
   };
 

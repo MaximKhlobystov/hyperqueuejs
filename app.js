@@ -60,6 +60,11 @@ var store = (function(host, port) {
       return topics;
     },
 
+    // getter for the sessions array
+    getAllSessions: function() {
+      return sessions;
+    },
+
     // pushes a new event to the array of events on the topic specified by index
     pushEventByTopicIndex: function(topicIndex, event) {
       topics[topicIndex].events.push(event);
@@ -103,9 +108,6 @@ var store = (function(host, port) {
     },
 
     pullNextEvent: function(sid) {
-      console.log("pullNextEvent");
-      console.log("session: " + sessions);
-      console.log("sid: " + sid);
       for(var i = 0; i < sessions.length; i++) {
         if(sessions[i].sid == sid) {
           var topic = this.getTopicByName(sessions[i].topic);
@@ -140,7 +142,6 @@ app.post('/:topic', function (req, res) {
 
 // handling GET requests (from consumers)
 app.get('/:topic', function (req, res) {
-  console.log(req.params.topic)
   res.setHeader("Access-Control-Expose-Headers", "Session-Id");
   if(req.query.session == undefined) { // for the first time
     var sid = store.registerSession(req.params.topic);
@@ -148,14 +149,24 @@ app.get('/:topic', function (req, res) {
     res.status(httpStatus.OK); // code 200 (operation successful)
     res.send();
   } else {
-    console.log(req.query.session);
     var event = store.pullNextEvent(req.query.session);
     if(event == -1) {
       res.status(httpStatus.NOT_FOUND); // code 404 (not found)
       res.send("Session not found");
     } else if(event == 0) {
-      res.status(httpStatus.NO_CONTENT); // code 204 (no content)
-      res.send("No event left");
+      setTimeout(function() { // holds on for a while (to wait for new events)
+        event = store.pullNextEvent(req.query.session);
+        if(event == 0) { // still nothing
+          res.status(httpStatus.NO_CONTENT); // code 204 (no content)
+          res.send("No event left");
+        } else if(event == -1) {
+          res.status(httpStatus.NOT_FOUND); // code 404 (not found)
+          res.send("Session not found");
+        } else { // new event(s) arrived
+          res.status(httpStatus.OK); // code 200 (operation successful)
+          res.json(event);
+        }
+      }, 3000);
     } else {
       res.status(httpStatus.OK); // code 200 (operation successful)
       res.json(event);

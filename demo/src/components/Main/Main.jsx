@@ -11,55 +11,85 @@ var MenuItem = require("material-ui/lib/menus/menu-item");
 var injectTapEventPlugin = require("react-tap-event-plugin");
 injectTapEventPlugin();
 
+var Client = (function(brokerHost, brokerPort) {
+
+  var host = brokerHost;
+  var port = brokerPort;
+
+  var pullEvent = function(topic, sid, onSuccess, onError) {
+    var xhr = new XMLHttpRequest();
+    xhr.onreadystatechange = function() {
+      if(xhr.readyState == 4) {
+        if(xhr.status == 200) {
+          onSuccess(xhr.responseText);
+          pullEvent(topic, sid, onSuccess, onError);
+        } else {
+          if(xhr.status == 204) { // code 204 (no content)
+            console.log("No event left");
+          } else if(xhr.status == 404) { // code 404 (not found)
+            console.log("Session not found");
+          }
+          onError(xhr.responseText);
+        }
+      }
+    }
+    xhr.open("GET", "http://localhost:3000/" + topic + "?session=" + sid, true);
+    xhr.send();
+  };
+
+  return {
+    produce: function(topic, event) {
+      var xhr = new XMLHttpRequest();
+      xhr.onreadystatechange = function() {
+        if(xhr.readyState == 4) {
+          if(xhr.status == 201) { // 201 - successfully created
+            console.log(xhr.responseText);
+          }
+        }
+      };
+      xhr.open("POST", host + ":" + port + "/" + topic, true);
+      xhr.setRequestHeader("Content-Type", "application/json");
+      xhr.send(JSON.stringify(event));
+    },
+    consume: function(topic, onSuccess, onError) {
+      var req = new XMLHttpRequest();
+      req.onreadystatechange = function() {
+        if(req.readyState == 4) {
+          if(req.status == 200) {
+            var sid = req.getResponseHeader("Session-Id");
+            var resp = pullEvent(topic, sid, onSuccess, onError);
+          }
+        }
+      };
+      req.open("GET", host + ":" + port + "/" + topic, true);
+      req.send();
+    }
+  };
+});
+
+var client = new Client("http://localhost", 3000);
+
 var Main = React.createClass({
   getInitialState: function() {
     return {
       title: "",
-      type: "Issue"
+      typeToPost: "Issue",
+      typeToGet: "Issue"
     };
   },
 
   // starts consuming data (events)
   handleGET: function() {
-    var req = new XMLHttpRequest();
-    req.onreadystatechange = function() {
-      if(req.readyState == 4) {
-        if(req.status == 200) {
-          console.log("OK");
-          var sid = req.getResponseHeader("Session-Id");
-          var xhr = new XMLHttpRequest();
-          xhr.onreadystatechange = function() {
-            if(xhr.readyState == 4) {
-              if(xhr.status == 200) {
-                console.log("OK");
-                console.log(xhr.responseText);
-              }
-            }
-          }
-          xhr.open("GET", "http://localhost:3000/topic1?session=" + sid, true);
-          xhr.send();
-        }
-      }
+    var onSuccess = function(event) {
+      console.log(event);
     };
-    req.open("GET", "http://localhost:3000/topic1", true);
-    req.send();
+    var onError = function(error) {};
+    client.consume(this.state.typeToGet, onSuccess, onError);
   },
 
   // produces data (pushes new events to a topic)
   handlePOST: function() {
-    var xhr = new XMLHttpRequest();
-    xhr.onreadystatechange = function() {
-      if(xhr.readyState == 4) {
-        if(xhr.status == 201) { // 201 - successfully created
-          console.log(xhr.responseText);
-        }
-      }
-    };
-    xhr.open("POST", "http://localhost:3000/" + this.state.type, true);
-    xhr.setRequestHeader("Content-Type", "application/json");
-    xhr.send(JSON.stringify({
-      title: this.state.title
-    }));
+    client.produce(this.state.typeToPost, { title: this.state.title });
   },
 
   // fires every time the Title text field is changed
@@ -68,14 +98,24 @@ var Main = React.createClass({
   },
 
   // fires every time the Type text field is changed
-  handleTypeChange: function(event, index, value) {
-    this.state.type = value;
+  handleTypeToPostChange: function(event, index, value) {
+    this.state.typeToPost = value;
+    this.forceUpdate();
+  },
+
+  handleTypeToGetChange: function(event, index, value) {
+    this.state.typeToGet = value;
     this.forceUpdate();
   },
 
   render: function() {
     return (
       <div className="mainContainer">
+        <h3>Get Items (Consumer)</h3>
+        <SelectField value={this.state.typeToGet} onChange={this.handleTypeToGetChange}>
+          <MenuItem value="Issue" primaryText="Issue"/>
+          <MenuItem value="Request" primaryText="Request"/>
+        </SelectField>
         <FlatButton
           label="GET"
           onClick={this.handleGET} />
@@ -87,7 +127,7 @@ var Main = React.createClass({
           hintText="Title"
           onChange={this.handleTitleChange} />
         <br/>
-        <SelectField value={this.state.type} onChange={this.handleTypeChange}>
+        <SelectField value={this.state.typeToPost} onChange={this.handleTypeToPostChange}>
           <MenuItem value="Issue" primaryText="Issue"/>
           <MenuItem value="Request" primaryText="Request"/>
         </SelectField>

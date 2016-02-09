@@ -14,7 +14,7 @@ app.use(function(req, res, next) {
 
 app.use(bodyParser.json());       // to support JSON-encoded bodies
 
-var store = (function() {
+var store = (function(host, port) {
 
   // private variables:
   var topics = [];
@@ -67,13 +67,15 @@ var store = (function() {
     },
 
     // generates a new session and stores it
-    registerSession: function() {
+    registerSession: function(topic) {
       var sid = generateSessionId();
       while(!isSessionUnique()) {
         sid = generateSessionId();
       }
       sessions.push({
-        "sid": sid
+        "sid": sid,
+        "topic": topic,
+        "offset": 0
       });
       return sid;
     },
@@ -88,6 +90,35 @@ var store = (function() {
         }
       }
       return false;
+    },
+
+    incrementSessionOffset: function(sid) {
+      for(var i = 0; i < sessions.length; i++) {
+        if(sessions[i].sid == sid) {
+          sessions[i].offset++;
+          return true;
+        }
+      }
+      return false;
+    },
+
+    pullNextEvent: function(sid) {
+      console.log("pullNextEvent");
+      console.log("session: " + sessions);
+      console.log("sid: " + sid);
+      for(var i = 0; i < sessions.length; i++) {
+        if(sessions[i].sid == sid) {
+          var topic = this.getTopicByName(sessions[i].topic);
+          var offset = sessions[i].offset;
+          if(offset < topic.events.length) {
+            this.incrementSessionOffset(sid);
+            return topic.events[offset];
+          } else {
+            return 0;
+          }
+        }
+      }
+      return -1;
     }
   };
 })();
@@ -109,17 +140,26 @@ app.post('/:topic', function (req, res) {
 
 // handling GET requests (from consumers)
 app.get('/:topic', function (req, res) {
-  console.log("GET");
+  console.log(req.params.topic)
   res.setHeader("Access-Control-Expose-Headers", "Session-Id");
   if(req.query.session == undefined) { // for the first time
-    var sid = store.registerSession();
+    var sid = store.registerSession(req.params.topic);
     res.setHeader("Session-Id", sid);
     res.status(httpStatus.OK); // code 200 (operation successful)
     res.send();
   } else {
     console.log(req.query.session);
-    res.status(httpStatus.OK); // code 200 (operation successful)
-    res.json({"test": "test"});
+    var event = store.pullNextEvent(req.query.session);
+    if(event == -1) {
+      res.status(httpStatus.NOT_FOUND); // code 404 (not found)
+      res.send("Session not found");
+    } else if(event == 0) {
+      res.status(httpStatus.NO_CONTENT); // code 204 (no content)
+      res.send("No event left");
+    } else {
+      res.status(httpStatus.OK); // code 200 (operation successful)
+      res.json(event);
+    }
   }
 });
 

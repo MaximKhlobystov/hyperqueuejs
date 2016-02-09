@@ -60,6 +60,14 @@ var store = (function(host, port) {
       return topics;
     },
 
+    getAllTopicNames: function() {
+      var names = [];
+      topics.forEach(function(topic) {
+        names.push(topic.name);
+      });
+      return names;
+    },
+
     // getter for the sessions array
     getAllSessions: function() {
       return sessions;
@@ -172,6 +180,13 @@ app.get('/:topic', function (req, res) {
       res.json(event);
     }
   }
+});
+
+app.get("/", function (req, res) {
+  res.status(httpStatus.OK); // code 200 (operation successful)
+  res.json({
+    topics: store.getAllTopicNames()
+  });
 });
 
 app.listen(process.env.PORT || 3000, function () {

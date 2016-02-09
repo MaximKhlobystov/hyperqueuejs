@@ -33,6 +33,13 @@ var Main = React.createClass({
     hyperqueue.consume(this.state.typeToGet, onSuccess, onError);
   },
 
+  // returns the list of all topic names
+  handleGETAll: function() {
+    hyperqueue.requestTopics(function(topics) {
+      console.log(topics);
+    });
+  },
+
   // produces data (pushes new events to a topic)
   handlePOST: function() {
     hyperqueue.produce(this.state.typeToPost, { title: this.state.title });
@@ -65,6 +72,10 @@ var Main = React.createClass({
         <FlatButton
           label="GET"
           onClick={this.handleGET} />
+        <br/>
+        <FlatButton
+          label="GET ALL"
+          onClick={this.handleGETAll} />
         <br/>
         <br/>
         <br/>

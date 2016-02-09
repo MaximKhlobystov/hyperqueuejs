@@ -57,6 +57,21 @@ var Client = (function(brokerHost, brokerPort) {
       req.open("GET", host + ":" + port + "/" + topic, true);
       req.send();
       return consumerId;
+    },
+    stopConsumption: function(consumerId) {
+      consumers[consumerId] = false;
+    },
+    requestTopics: function(callback) {
+      var req = new XMLHttpRequest();
+      req.onreadystatechange = function() {
+        if(req.readyState == 4) {
+          if(req.status == 200) {
+            callback(JSON.parse(req.responseText).topics);
+          }
+        }
+      };
+      req.open("GET", host + ":" + port, true);
+      req.send();
     }
   };
 });

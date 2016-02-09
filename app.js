@@ -174,7 +174,7 @@ app.get('/:topic', function (req, res) {
           res.status(httpStatus.OK); // code 200 (operation successful)
           res.json(event);
         }
-      }, 3000);
+      }, 1000);
     } else {
       res.status(httpStatus.OK); // code 200 (operation successful)
       res.json(event);
